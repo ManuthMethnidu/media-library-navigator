@@ -130,7 +130,7 @@
       border-radius: 8px;
       padding: 10px 14px 10px 38px;
       color: var(--text);
-      font-size: 16px; /* Prevents auto-zoom on mobile */
+      font-size: 16px;
       outline: none;
       transition: all 0.2s;
     }
@@ -519,6 +519,25 @@
       font-weight: 600;
     }
 
+    .size-badge {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      animation: pulse 1.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.9; }
+      100% { opacity: 1; border-color: rgba(16, 185, 129, 0.6); }
+    }
+
     .drawer-controls {
       display: flex;
       align-items: center;
@@ -622,7 +641,7 @@
       }
 
       .stats-badge {
-        display: none; /* Keep header compact on small screens */
+        display: none;
       }
 
       .grid {
@@ -731,6 +750,7 @@
       <div class="drawer-header">
         <div class="selection-summary">
           <span class="selection-badge" id="selected-badge">0 Selected</span>
+          <span class="size-badge" id="selected-size-badge" style="display: none;">📦 0.00 GB</span>
           <span class="selection-count" id="selection-count-text">Select items to export</span>
         </div>
 
@@ -784,6 +804,7 @@
     const resultsCount = document.getElementById("results-count");
     const statsBadge = document.getElementById("stats-badge");
     const selectedBadge = document.getElementById("selected-badge");
+    const selectedSizeBadge = document.getElementById("selected-size-badge");
     const selectionCountText = document.getElementById("selection-count-text");
     const actionSelect = document.getElementById("action-select");
     const targetDirInput = document.getElementById("target-dir-input");
@@ -809,6 +830,45 @@
     });
     const totalGB = (totalBytes / (1024**3)).toFixed(1);
     statsBadge.textContent = `${totalTitles} Titles • ${totalVideos} Videos • ${totalGB} GB`;
+
+    function formatBytes(bytes) {
+      if (!bytes || bytes <= 0) return "0 GB";
+      if (bytes >= 1024 * 1024 * 1024) {
+        return (bytes / (1024 ** 3)).toFixed(2) + " GB";
+      } else if (bytes >= 1024 * 1024) {
+        return (bytes / (1024 ** 2)).toFixed(1) + " MB";
+      } else {
+        return (bytes / 1024).toFixed(0) + " KB";
+      }
+    }
+
+    function calculateSelectedBytes() {
+      let bytes = 0;
+      const countedFiles = new Set();
+
+      selectedFolders.forEach(itemId => {
+        const item = libraryData.find(x => x.id === itemId);
+        if (item) {
+          item.files.forEach(f => {
+            bytes += f.size || 0;
+            countedFiles.add(f.full_path);
+          });
+        }
+      });
+
+      selectedFiles.forEach(filePath => {
+        if (!countedFiles.has(filePath)) {
+          const item = libraryData.find(x => x.files.some(f => f.full_path === filePath));
+          const f = item ? item.files.find(x => x.full_path === filePath) : null;
+          if (f) {
+            bytes += f.size || 0;
+            countedFiles.add(filePath);
+          }
+        }
+      });
+
+      return bytes;
+    }
 
     // Filter Logic
     function getFilteredItems() {
@@ -920,7 +980,6 @@
 
     // Bind Event Listeners
     function bindEvents() {
-      // Folder checkboxes
       document.querySelectorAll(".folder-checkbox").forEach(cb => {
         cb.addEventListener("change", (e) => {
           const itemId = e.target.dataset.itemId;
@@ -937,7 +996,6 @@
         });
       });
 
-      // Clicking card header toggles expansion if clicked outside checkbox
       document.querySelectorAll(".card-header").forEach(hdr => {
         hdr.addEventListener("click", (e) => {
           if (e.target.closest(".checkbox-container") || e.target.classList.contains("folder-checkbox")) return;
@@ -954,7 +1012,6 @@
         });
       });
 
-      // File checkboxes
       document.querySelectorAll(".file-checkbox").forEach(cb => {
         cb.addEventListener("change", (e) => {
           const itemId = e.target.dataset.itemId;
@@ -1011,20 +1068,26 @@
 
       const foldersCount = selectedFolders.size;
       const filesCount = selectedFiles.size;
+      const totalSelectedBytes = calculateSelectedBytes();
+      const formattedSize = formatBytes(totalSelectedBytes);
 
       if (foldersCount === 0 && filesCount === 0) {
         selectedBadge.textContent = "0 Selected";
+        selectedSizeBadge.style.display = "none";
         selectionCountText.textContent = "Select items to export";
         cmdText.textContent = "# Select folders or individual files above to generate the Linux command";
         return;
       }
 
       selectedBadge.textContent = `${foldersCount} Folders, ${filesCount} Files`;
-      selectionCountText.textContent = `Target: ${targetDir.split("/").pop() || targetDir}`;
+      selectedSizeBadge.textContent = `📦 ${formattedSize}`;
+      selectedSizeBadge.style.display = "inline-flex";
+      selectionCountText.textContent = `Total Size: ${formattedSize} • Target: ${targetDir.split("/").pop() || targetDir}`;
 
       let cmds = [
         `#!/usr/bin/env bash`,
         `# Generated by Media Library Navigator`,
+        `# Total Selected Size: ${formattedSize} (${foldersCount} folders, ${filesCount} files)`,
         `set -e`,
         ``,
         `TARGET_DIR="${targetDir}"`,
@@ -1036,10 +1099,10 @@
         const item = libraryData.find(x => x.id === itemId);
         if (item && item.is_folder) {
           if (action === "mv") {
-            cmds.push(`echo "Moving folder: ${item.folder_name}..."`);
+            cmds.push(`echo "Moving folder: ${item.folder_name} (${item.total_size_str})..."`);
             cmds.push(`mv "${item.path}" "$TARGET_DIR/"`);
           } else {
-            cmds.push(`echo "Copying folder: ${item.folder_name}..."`);
+            cmds.push(`echo "Copying folder: ${item.folder_name} (${item.total_size_str})..."`);
             cmds.push(`cp -r "${item.path}" "$TARGET_DIR/"`);
           }
         }
@@ -1076,15 +1139,21 @@
       });
 
       cmds.push(``);
-      cmds.push(`echo "Export complete! All selected files are in $TARGET_DIR"`);
+      cmds.push(`echo "Export complete! ${formattedSize} exported to $TARGET_DIR"`);
       cmdText.textContent = cmds.join("\n");
     }
 
     function generateTextList() {
       let list = [];
+      const totalSelectedBytes = calculateSelectedBytes();
+      const formattedSize = formatBytes(totalSelectedBytes);
+
+      list.push(`📋 Selected Media List (Total: ${formattedSize}):`);
+      list.push(``);
+
       selectedFolders.forEach(itemId => {
         const item = libraryData.find(x => x.id === itemId);
-        if (item) list.push(`• ${item.folder_name || item.files[0].name} (${item.category})`);
+        if (item) list.push(`• ${item.folder_name || item.files[0].name} [${item.total_size_str}] (${item.category})`);
       });
 
       const processed = new Set();
@@ -1097,9 +1166,12 @@
         if (!processed.has(filePath)) {
           const item = libraryData.find(x => x.files.some(f => f.full_path === filePath));
           const f = item ? item.files.find(x => x.full_path === filePath) : null;
-          if (f) list.push(`• ${f.rel_path} [${item.folder_name}]`);
+          if (f) list.push(`• ${f.rel_path} [${f.size_str}] (${item.folder_name})`);
         }
       });
+
+      list.push(``);
+      list.push(`Total: ${formattedSize} (${selectedFolders.size} folders, ${selectedFiles.size} files)`);
       return list.join("\n");
     }
 
@@ -1138,7 +1210,6 @@
     actionSelect.addEventListener("change", updateCommand);
     targetDirInput.addEventListener("input", updateCommand);
 
-    // Toggle drawer on mobile
     function toggleDrawer() {
       exportDrawer.classList.toggle("collapsed");
       btnToggleDetails.textContent = exportDrawer.classList.contains("collapsed") ? "⚙ Options & Script" : "▲ Hide Options";
@@ -1146,27 +1217,24 @@
     drawerHandle.addEventListener("click", toggleDrawer);
     btnToggleDetails.addEventListener("click", toggleDrawer);
 
-    // Copy command
     btnCopyCmd.addEventListener("click", () => {
       const text = cmdText.textContent;
       if (!text || text.startsWith("# Select")) {
         showToast("Select items first!");
         return;
       }
-      navigator.clipboard.writeText(text).then(() => showToast("Command copied to clipboard!"));
+      navigator.clipboard.writeText(text).then(() => showToast(`Copied command (${formatBytes(calculateSelectedBytes())})!`));
     });
 
-    // Copy text list (great for WhatsApp/messages)
     btnCopyList.addEventListener("click", () => {
       const list = generateTextList();
-      if (!list) {
+      if (selectedFolders.size === 0 && selectedFiles.size === 0) {
         showToast("Select items first!");
         return;
       }
-      navigator.clipboard.writeText(list).then(() => showToast("Movie list copied to clipboard!"));
+      navigator.clipboard.writeText(list).then(() => showToast(`Copied list (${formatBytes(calculateSelectedBytes())})!`));
     });
 
-    // Download .sh script
     btnDownloadSh.addEventListener("click", () => {
       const text = cmdText.textContent;
       if (!text || text.startsWith("# Select")) return;
@@ -1190,7 +1258,7 @@
       });
       renderGrid();
       updateCommand();
-      showToast(`Selected ${filtered.length} titles`);
+      showToast(`Selected ${filtered.length} titles (${formatBytes(calculateSelectedBytes())})`);
     });
 
     btnDeselectAll.addEventListener("click", () => {
