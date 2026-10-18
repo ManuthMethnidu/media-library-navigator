@@ -17,7 +17,7 @@ A fast, mobile-friendly, offline-capable single-page web application to browse, 
   - Real-time search by title, release year, resolution (`1080p`, `720p`, `4K`), format (`.mkv`, `.mp4`), or category.
   - Press `/` anywhere to focus the search bar.
 - **🌸 Smart Category Filters**:
-  - Dedicated pills for **Anime (TOSHIBA EXT)**, **Movies**, **Animated**, **TV Shows**, and **Marvel**.
+  - Dedicated pills for **Anime (TOSHIBA EXT)**, **Movies (New Volume)**, **Animated**, **TV Shows (TOSHIBA EXT)**, and **Marvel**.
 - **📦 Linux Export Script Generator**:
   - Select entire folders or individual files with interactive checkboxes.
   - Generates ready-to-run Bash commands (`mv` or `cp -r`) targeting an export directory (e.g., `/run/media/mana/New Volume/Movies/export/`).

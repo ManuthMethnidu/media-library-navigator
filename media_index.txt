@@ -1541,7 +1541,7 @@
     ├── Transformers One (2024) [1080p].mkv (1.40 GB) [1080p]
 
 ################################################################################
-# TV SHOWS - Series  [/run/media/mana/New Volume/Movies/TV Shows]
+# TV SHOWS - Series  [/run/media/mana/TOSHIBA EXT/TV Shows]
 ################################################################################
 
   [DIR] Anne with an E (5.81 GB, 27 videos)

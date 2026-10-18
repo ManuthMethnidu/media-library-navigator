@@ -14,7 +14,7 @@ dirs_to_index = [
     {"category": "Anime", "sub": "Series", "path": os.path.join(TOSHIBA_BASE, "Anime", "Series")},
     {"category": "Movies", "sub": "Feature Films", "path": os.path.join(NV_BASE, "Movies")},
     {"category": "Animated", "sub": "Animation", "path": os.path.join(NV_BASE, "Animated")},
-    {"category": "TV Shows", "sub": "Series", "path": os.path.join(NV_BASE, "TV Shows")},
+    {"category": "TV Shows", "sub": "Series", "path": os.path.join(TOSHIBA_BASE, "TV Shows")},
     {"category": "Marvel", "sub": "MCU & Comics", "path": os.path.join(TOSHIBA_BASE, "Marvel")},
     {"category": "TV Series (Toshiba)", "sub": "Series", "path": os.path.join(TOSHIBA_BASE, "T V Series")},
 ]
